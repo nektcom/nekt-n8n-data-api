@@ -1,0 +1,47 @@
+{
+  "name": "nekt-n8n-data-api",
+  "version": "1.0.0",
+  "description": "n8n community node for the Nekt Data API — query your data warehouse directly in automations",
+  "keywords": ["n8n-community-node-package"],
+  "license": "MIT",
+  "homepage": "https://github.com/nektcom/nekt-n8n-data-api",
+  "author": {
+    "name": "Nekt",
+    "email": "hi@nekt.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nektcom/nekt-n8n-data-api.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc --noEmit && node scripts/build.js",
+    "dev": "npm run build && mkdir -p ~/.n8n/custom && cp -r dist ~/.n8n/custom/nekt-n8n-data-api",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "prepublishOnly": "npm run build && npm run lint"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/NektApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Nekt/NektDataApi.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@dsnp/parquetjs": "^1.8.5",
+    "@typescript-eslint/eslint-plugin": "^7.4.0",
+    "@typescript-eslint/parser": "^7.4.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.2",
+    "n8n-workflow": "^1.0.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -215,7 +215,7 @@ async function runQueryAndGetResults(
 	}
 }
 
-export class Nekt implements INodeType {
+export class NektDataApi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nekt Data API',
 		name: 'nektDataApi',

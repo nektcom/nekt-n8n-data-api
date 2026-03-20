@@ -10,7 +10,7 @@ export class NektApi implements ICredentialType {
 
 	displayName = 'Nekt API';
 
-	documentationUrl = 'https://docs.nekt.ai/data-api-v1/introduction';
+	documentationUrl = 'https://app.nekt.ai/integrations/data-api';
 
 	properties: INodeProperties[] = [
 		{
@@ -20,7 +20,7 @@ export class NektApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
-			description: 'Your Nekt API key. Create one at https://app.nekt.ai/settings/api-keys.',
+			description: 'Your Nekt Data API key. Find it at https://app.nekt.ai/integrations/data-api.',
 		},
 	];
 

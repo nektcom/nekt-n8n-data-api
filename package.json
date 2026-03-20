@@ -1,22 +1,22 @@
 {
-  "name": "nekt-n8n-data-api",
+  "name": "nekt-n8n-node",
   "version": "1.0.0",
   "description": "n8n community node for the Nekt Data API — query your data warehouse directly in automations",
   "keywords": ["n8n-community-node-package"],
   "license": "MIT",
-  "homepage": "https://github.com/nektcom/nekt-n8n-data-api",
+  "homepage": "https://github.com/nektcom/nekt-n8n-node",
   "author": {
     "name": "Nekt",
     "email": "hi@nekt.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nektcom/nekt-n8n-data-api.git"
+    "url": "https://github.com/nektcom/nekt-n8n-node.git"
   },
   "main": "index.js",
   "scripts": {
     "build": "tsc --noEmit && node scripts/build.js",
-    "dev": "npm run build && rm -rf ~/.n8n/custom/nekt-n8n-data-api && cp -r dist ~/.n8n/custom/nekt-n8n-data-api",
+    "dev": "npm run build && rm -rf ~/.n8n/custom/nekt-n8n-node && cp -r dist ~/.n8n/custom/nekt-n8n-node",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "prepublishOnly": "npm run build && npm run lint"

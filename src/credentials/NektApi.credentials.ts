@@ -1,6 +1,5 @@
 import type {
 	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -24,14 +23,6 @@ export class NektApi implements ICredentialType {
 			description: 'Your Nekt API key. Create one at https://app.nekt.ai/settings/api-keys.',
 		},
 	];
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://app.nekt.ai',
-			url: '/api/v1/explorer/application/',
-			method: 'GET',
-		},
-	};
 
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,

@@ -14,24 +14,29 @@ export class NektApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
-			name: 'apiKey',
+			displayName: 'Data API Key',
+			name: 'dataApiKey',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			required: true,
-			description: 'Your Nekt Data API key. Find it at https://app.nekt.ai/integrations/data-api.',
+			description:
+				'For SQL Query operations. Find it at https://app.nekt.ai/integrations/data-api.',
+		},
+		{
+			displayName: 'Platform API Key',
+			name: 'platformApiKey',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'For Source, Transformation, Destination, and Run operations. Find it at https://app.nekt.ai/settings/api-keys.',
 		},
 	];
 
 	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
+		_credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			...requestOptions.headers,
-			'x-api-key': credentials.apiKey as string,
-		};
 		return requestOptions;
 	}
 }

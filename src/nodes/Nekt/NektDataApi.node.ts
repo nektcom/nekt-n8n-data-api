@@ -9,6 +9,7 @@ import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { ParquetReader } from '@dsnp/parquetjs';
 
 const BASE_URL = 'https://app.nekt.ai';
+const PLATFORM_BASE_URL = 'https://api.nekt.ai';
 const POLL_INTERVAL_MS = 5_000;
 
 function sleep(ms: number): Promise<void> {
@@ -215,17 +216,61 @@ async function runQueryAndGetResults(
 	}
 }
 
+async function triggerPipelineRun(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	resource: string,
+	headers: Record<string, string>,
+	returnData: INodeExecutionData[],
+): Promise<void> {
+	const slug = context.getNodeParameter('slug', itemIndex) as string;
+
+	const resourcePath =
+		resource === 'source'
+			? 'sources'
+			: resource === 'transformation'
+				? 'transformations'
+				: 'destinations';
+
+	const response = (await context.helpers.httpRequest({
+		method: 'POST',
+		url: `${PLATFORM_BASE_URL}/api/v1/${resourcePath}/${slug}/trigger/`,
+		headers,
+		json: true,
+	})) as IDataObject;
+
+	returnData.push({ json: response, pairedItem: { item: itemIndex } });
+}
+
+async function getRunStatus(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	headers: Record<string, string>,
+	returnData: INodeExecutionData[],
+): Promise<void> {
+	const runId = context.getNodeParameter('runId', itemIndex) as string;
+
+	const response = (await context.helpers.httpRequest({
+		method: 'GET',
+		url: `${PLATFORM_BASE_URL}/api/v1/runs/${runId}/`,
+		headers,
+		json: true,
+	})) as IDataObject;
+
+	returnData.push({ json: response, pairedItem: { item: itemIndex } });
+}
+
 export class NektDataApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Nekt Data API',
+		displayName: 'Nekt',
 		name: 'nektDataApi',
 		icon: 'file:nekt.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"]}}',
-		description: 'Query your data warehouse via the Nekt Data API',
+		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
+		description: 'Query your data warehouse and trigger pipelines via the Nekt APIs',
 		defaults: {
-			name: 'Nekt Data API',
+			name: 'Nekt',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -236,6 +281,37 @@ export class NektDataApi implements INodeType {
 			},
 		],
 		properties: [
+			// ── Resource selector ───────────────────────────────────────
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Destination',
+						value: 'destination',
+					},
+					{
+						name: 'Run',
+						value: 'run',
+					},
+					{
+						name: 'Source',
+						value: 'source',
+					},
+					{
+						name: 'SQL Query',
+						value: 'sqlQuery',
+					},
+					{
+						name: 'Transformation',
+						value: 'transformation',
+					},
+				],
+				default: 'sqlQuery',
+			},
+			// ── Operation selector ──────────────────────────────────────
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -248,6 +324,7 @@ export class NektDataApi implements INodeType {
 						description:
 							'Execute a SQL query and receive a presigned download URL (Parquet or CSV). Best for large exports and external data processing.',
 						action: 'Run a SQL query and get a download URL',
+						displayOptions: { show: { resource: ['sqlQuery'] } },
 					},
 					{
 						name: 'Run Query and Get Results',
@@ -255,11 +332,61 @@ export class NektDataApi implements INodeType {
 						description:
 							'Execute a SQL query and return each row as an individual n8n item. Best for using warehouse data directly in automations.',
 						action: 'Run a SQL query and return rows as items',
+						displayOptions: { show: { resource: ['sqlQuery'] } },
+					},
+					{
+						name: 'Trigger Run',
+						value: 'triggerRun',
+						description: 'Trigger a pipeline run for this resource',
+						action: 'Trigger a pipeline run',
+						displayOptions: {
+							show: { resource: ['source', 'transformation', 'destination'] },
+						},
+					},
+					{
+						name: 'Get Status',
+						value: 'getStatus',
+						description: 'Retrieve the current status of a run',
+						action: 'Get run status',
+						displayOptions: { show: { resource: ['run'] } },
 					},
 				],
 				default: 'runQueryAndGetResults',
+				displayOptions: { show: { resource: ['sqlQuery'] } },
 			},
-			// ── Shared ─────────────────────────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Trigger Run',
+						value: 'triggerRun',
+						description: 'Trigger a pipeline run for this resource',
+						action: 'Trigger a pipeline run',
+					},
+				],
+				default: 'triggerRun',
+				displayOptions: { show: { resource: ['source', 'transformation', 'destination'] } },
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Get Status',
+						value: 'getStatus',
+						description: 'Retrieve the current status of a run',
+						action: 'Get run status',
+					},
+				],
+				default: 'getStatus',
+				displayOptions: { show: { resource: ['run'] } },
+			},
+			// ── SQL Query fields ────────────────────────────────────────
 			{
 				displayName: 'SQL Query',
 				name: 'sqlQuery',
@@ -269,8 +396,8 @@ export class NektDataApi implements INodeType {
 				required: true,
 				description: 'The SQL query to execute. Uses Spark SQL — same dialect as the Nekt Explorer.',
 				placeholder: 'SELECT * FROM "nekt_raw"."my_table" LIMIT 100',
+				displayOptions: { show: { resource: ['sqlQuery'] } },
 			},
-			// ── Run Query ───────────────────────────────────────────────
 			{
 				displayName: 'Output Format',
 				name: 'outputFormat',
@@ -281,9 +408,8 @@ export class NektDataApi implements INodeType {
 				],
 				default: 'parquet',
 				description: 'Format of the output file referenced by the download URL',
-				displayOptions: { show: { operation: ['runQuery'] } },
+				displayOptions: { show: { resource: ['sqlQuery'], operation: ['runQuery'] } },
 			},
-			// ── Run Query and Get Results ────────────────────────────────
 			{
 				displayName: 'Max Pages',
 				name: 'maxPages',
@@ -291,7 +417,7 @@ export class NektDataApi implements INodeType {
 				default: 10,
 				description:
 					'Maximum number of pages to fetch. Each page contains up to 100 rows. Increase for larger result sets.',
-				displayOptions: { show: { operation: ['runQueryAndGetResults'] } },
+				displayOptions: { show: { resource: ['sqlQuery'], operation: ['runQueryAndGetResults'] } },
 			},
 			{
 				displayName: 'Application Start Timeout (Minutes)',
@@ -300,7 +426,26 @@ export class NektDataApi implements INodeType {
 				default: 5,
 				description:
 					'How long to wait for the Nekt Explorer application to start. The first run of the day typically takes ~2 minutes.',
-				displayOptions: { show: { operation: ['runQueryAndGetResults'] } },
+				displayOptions: { show: { resource: ['sqlQuery'], operation: ['runQueryAndGetResults'] } },
+			},
+			// ── Platform API fields ─────────────────────────────────────
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'The slug of the pipeline to trigger. Visible in the Nekt UI URL.',
+				displayOptions: { show: { resource: ['source', 'transformation', 'destination'] } },
+			},
+			{
+				displayName: 'Run ID',
+				name: 'runId',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'The ID of the run to retrieve',
+				displayOptions: { show: { resource: ['run'] } },
 			},
 		],
 	};
@@ -310,18 +455,34 @@ export class NektDataApi implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
+			const resource = this.getNodeParameter('resource', i) as string;
 			const operation = this.getNodeParameter('operation', i) as string;
 			const credentials = await this.getCredentials('nektApi');
-			const headers = {
-				'x-api-key': credentials.apiKey as string,
+
+			const dataHeaders = {
+				'x-api-key': credentials.dataApiKey as string,
+				'Content-Type': 'application/json',
+			};
+			const platformHeaders = {
+				'x-api-key': credentials.platformApiKey as string,
 				'Content-Type': 'application/json',
 			};
 
 			try {
-				if (operation === 'runQuery') {
-					await runQuery(this, i, headers, returnData);
-				} else if (operation === 'runQueryAndGetResults') {
-					await runQueryAndGetResults(this, i, headers, returnData);
+				if (resource === 'sqlQuery') {
+					if (operation === 'runQuery') {
+						await runQuery(this, i, dataHeaders, returnData);
+					} else if (operation === 'runQueryAndGetResults') {
+						await runQueryAndGetResults(this, i, dataHeaders, returnData);
+					}
+				} else if (resource === 'source' || resource === 'transformation' || resource === 'destination') {
+					if (operation === 'triggerRun') {
+						await triggerPipelineRun(this, i, resource, platformHeaders, returnData);
+					}
+				} else if (resource === 'run') {
+					if (operation === 'getStatus') {
+						await getRunStatus(this, i, platformHeaders, returnData);
+					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
